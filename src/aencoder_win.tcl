@@ -89,7 +89,7 @@ proc checkfile {file} {
 proc checkfiles {curdir} {
     set toolsdir "$curdir\\tools"
     set missing ""
-    foreach cur [list "js32.dll" "MP4Box.exe" "mencoder.exe" "MediaInfo.exe" "MediaInfo.dll"] {
+    foreach cur [list "MP4Box.exe" "mencoder.exe"] {
         if {[set file [checkfile $toolsdir\\$cur]] != 1} {
             lappend missing $file
         }
@@ -243,15 +243,6 @@ proc myexec {cmd} {
     return $data
 }
 
-proc getvidfps {infile} {
-    set fps [string trim [myexec "[filt \"$::curdir\\tools\\MediaInfo.exe\"] --Inform=Video\;%FrameRate% [filt \"$infile\"]"]]
-    if {[string is double $fps] && $fps < 31 && $fps > 9} {
-        wlog "FPS DETECTION: Got $fps fps"
-        return $fps
-    }
-    wlog "FPS DETECTION: Failed, forcing 25 fps"
-    return 25
-}
 
 proc getvidinfo {infile} {
     global vdata
@@ -261,13 +252,32 @@ proc getvidinfo {infile} {
     set data [myexec "[filt \"$::curdir\\tools\\mencoder.exe\"] -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o NUL -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
     wlog $data
     set vdata(sound) [regexp -line {^ID_AUDIO_ID} $data]
+
+    
+    
     regexp -all -line {\]\  (\d+)x(\d+)} $data tmp vdata(width) vdata(height)
-    if {![regexp -all -line {^ID_VIDEO_ASPECT=(.+)$} $data tmp vdata(aspect)]} {
+    wlog "Width\: $vdata(width) Heigh\: $vdata(height) "
+    
+    regexp -all -line {bpp  (\d\d\.\d\d\d) fps} $data tmp fps
+    if {$fps < 31 && $fps > 9} {
+        wlog "FPS DETECTION: Got $fps fps"
+        set vdata(fps) $fps
+    } else {
+    wlog "FPS DETECTION: Failed, forcing 25 fps"
+    set vdata(fps) 25
+    }
+    
+    
+      if {![regexp -all -line {^ID_VIDEO_ASPECT=(.+)$} $data tmp vdata(aspect)]} {
         set vdata(aspect) [expr $vdata(width).0/$vdata(height)]
         set vdata(noaspect) 1
+        wlog "No aspect ratio"
+        wlog "Calculated aspect ratio: $vdata(aspect)"
     } else {
         set vdata(noaspect) 0
+        wlog "Aspect ratio: $vdata(aspect)"
     }
+    
     set vdata(atracks) ""
     set vdata(stracks) ""
     foreach {tmp audio} [regexp -all -line -inline {^ID_AID_\d+_LANG=(.+)$} $data] {
@@ -305,8 +315,9 @@ proc convert {} {
         set outfile [getoutfile $outdir $file]
         .progress.name configure -text "$file"
         wlog "Starting to convert $file to $outfile"
-        set fps [getvidfps $file]
+       #set fps [getvidfps $file]
         getvidinfo $file
+        set fps $::vdata(fps)
         if {[catch {execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         if {[catch {execmenc "(2/3)" [normalsecondpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         set progvar 0
