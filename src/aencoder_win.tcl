@@ -247,26 +247,22 @@ proc myexec {cmd} {
 proc getvidinfo {infile} {
     global vdata
     if {[info exist vdata]} {unset vdata}
-    wlog "\n--------------------------------------------------------"
+    wlog "\n--------------------------------------------------------------------------"
     wlog "Getting video info for $infile"
     set data [myexec "[filt \"$::curdir\\tools\\mencoder.exe\"] -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o NUL -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
-    wlog $data
+    #wlog $data
     set vdata(sound) [regexp -line {^ID_AUDIO_ID} $data]
-
+    regexp -all -line {size:(\d+)x(\d+)} $data tmp vdata(width) vdata(height)
+    wlog "Width\: $vdata(width) Heigh\: $vdata(height)"
     
-    
-    regexp -all -line {\]\  (\d+)x(\d+)} $data tmp vdata(width) vdata(height)
-    wlog "Width\: $vdata(width) Heigh\: $vdata(height) "
-    
-    regexp -all -line {bpp  (\d\d\.\d\d\d) fps} $data tmp fps
+    regexp -all -line {fps:(.+)  ftime} $data tmp fps
+    wlog "FPS DETECTION: Got $fps fps"
     if {$fps < 31 && $fps > 9} {
-        wlog "FPS DETECTION: Got $fps fps"
         set vdata(fps) $fps
     } else {
-    wlog "FPS DETECTION: Failed, forcing 25 fps"
-    set vdata(fps) 25
+    set vdata(fps) 23.976
+    wlog "FPS DETECTION: Forcing 23.976 fps"
     }
-    
     
       if {![regexp -all -line {^ID_VIDEO_ASPECT=(.+)$} $data tmp vdata(aspect)]} {
         set vdata(aspect) [expr $vdata(width).0/$vdata(height)]
@@ -277,14 +273,15 @@ proc getvidinfo {infile} {
         set vdata(noaspect) 0
         wlog "Aspect ratio: $vdata(aspect)"
     }
-    
     set vdata(atracks) ""
     set vdata(stracks) ""
     foreach {tmp audio} [regexp -all -line -inline {^ID_AID_\d+_LANG=(.+)$} $data] {
         lappend vdata(atracks) $audio
+    wlog "Audio lang: $audio"
     }
     foreach {tmp sub} [regexp -all -line -inline {^ID_SID_\d+_LANG=(.+)$} $data] {
         lappend vdata(stracks) $sub
+    wlog "Subs lang: $sub"
     }   
 }
 
@@ -292,6 +289,7 @@ proc cleanup {} {
     file delete $::curdir\\audio.aac
     file delete $::curdir\\video_video.h264
     catch {file delete divx2pass.log}
+    catch {file delete divx2pass.log.mbtree}
 }
 
 proc convert {} {
@@ -315,7 +313,6 @@ proc convert {} {
         set outfile [getoutfile $outdir $file]
         .progress.name configure -text "$file"
         wlog "Starting to convert $file to $outfile"
-       #set fps [getvidfps $file]
         getvidinfo $file
         set fps $::vdata(fps)
         if {[catch {execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]}]} {set error 1; break}
