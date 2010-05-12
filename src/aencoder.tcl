@@ -89,11 +89,11 @@ proc checkfile {file} {
 proc checkfiles {curdir} {
 	set toolsdir "$curdir\\tools"
 	set missing ""
-	foreach cur [list "js32.dll" "MP4Box.exe" "mencoder.exe" "MediaInfo.exe" "MediaInfo.dll"] {
-		if {[set file [checkfile $toolsdir\\$cur]] != 1} {
-			lappend missing $file
-		}
-	}
+#	foreach cur [list "js32.dll" "MP4Box.exe" "mencoder.exe" "MediaInfo.exe" "MediaInfo.dll"] {
+#		if {[set file [checkfile $toolsdir\\$cur]] != 1} {
+#			lappend missing $file
+#		}
+#	}
 	if {$missing != ""} {
 		tk_messageBox -message "Can not continue, the following file(s) are missing from the tools folder: [join $missing]" -icon error -type ok
 		exit
@@ -541,7 +541,7 @@ grid rowconfigure .options.bitrate {1 5} -weight 1
 grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
-set curdir "/data/2see/tclencoder/"
+set curdir "[pwd]"
 checkfiles $curdir
 loaddirs
 focus -force .
