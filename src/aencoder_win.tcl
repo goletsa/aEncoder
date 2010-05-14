@@ -97,7 +97,7 @@ proc getrunningdir {} {
     	    exit
 	    }
 
-	}
+	
     cd $curdir
     return [string map {/ \\} $curdir]
 }
