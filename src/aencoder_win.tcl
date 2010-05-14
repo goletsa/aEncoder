@@ -1,13 +1,19 @@
-set version "0.99.3"
+set version "0.99.4, by Sunlight (4pda.ru)"
 
 proc showhelp {} {
-tk_messageBox -message {Язык аудио дорожки: выбор языка аудио дорожки, 2 знака для ISO 639-1 (DVD) или 3 знака для ISO 639-2 (MKV).
+tk_messageBox -message {
+Язык аудио дорожки: Выбор языка аудио дорожки, 2 знака для ISO 639-1 (DVD) или 3 знака для ISO 639-2 (MKV).
 
-Нормализация: выравнивания громкости и других параметров звука.
+Язык субтитров: Тоже самое что и язык аудио дорожки. Для включения субтитров поставьте галку Вкл.
 
-Язык субтитров: тоже самое что и язык аудио дорожки. Для включения субтитров поставьте галку Вкл. Если в папке с файлом находится внешние субтитры с совпадающим именем файла, то поумолчанию будут использоваться они. Для использования встроенных субтитров вам придется указать язык.
+Оформление ASS: Включение оформления субтитров в формате ASS. По умолчанию оформление не используется.
 
-Кодировка: кодировка субтитров. По умолчанию русские субтитры(srt, ssa) имеют кодировку cp1251, если на выходе субтитры выходят искаженными, можно задать кодировку вручную, например utf-8} -icon info -type ok -title "Помощь..."
+Кодировка: Кодировка субтитров. По умолчанию русские субтитры (SRT, SSA) имеют кодировку CP1251, если на выходе субтитры выходят искаженными, можно задать кодировку вручную, например UTF-8.
+
+Нормализация: Выравнивания громкости и других параметров звука.
+
+Новые версии: http://4pda.ru/forum/index.php?showtopic=168830
+} -icon info -type ok -title "Помощь..."
 }
 
 proc getsubtitleopts {filename} {
@@ -140,6 +146,7 @@ proc disablegui {} {
     .misc.analyze configure -state disabled
     .misc.help configure -state disabled
     .misc.ass configure -state disabled
+    .misc.subcp configure -state disabled
 }
 
 proc enablegui {} {
@@ -164,6 +171,7 @@ proc enablegui {} {
     .misc.analyze configure -state enabled
     .misc.help configure -state enabled
     .misc.ass configure -state enabled
+    .misc.subcp configure -state enabled
     setres
     setbr
     .progress.label configure -text "Готово!"
@@ -464,8 +472,8 @@ proc loaddirs {} {
 package req tile
 set initialdir ""
 set outdir ""
-set subcp "cp1251"
-set normalize "1"
+set subcp "CP1251"
+set normalize "0"
 set subsenabled "0"
 set cropwidth "0"
 set alang "rus"
@@ -528,14 +536,17 @@ grid [ttk::button .buttons.start -text "Начать!" -width 8 -command convert
 grid [ttk::button .buttons.exit -text "Выход" -width 8 -command exit] -row 0 -column 2
 grid [ttk::labelframe .misc -text "Дополнительные настройки"] -row 3 -column 0 -padx 1 -sticky nswe
 grid [ttk::label .misc.al -text "Язык аудио дорожки:"] -row 0 -column 0 -padx 2 -sticky w
-grid [ttk::entry .misc.audiolang -width 6 -textvariable alang] -row 0 -column 1 -sticky w
+grid [ttk::combobox .misc.audiolang -width 3 -textvariable alang] -row 0 -column 1 -sticky w
+.misc.audiolang configure -values [list rus ru eng en jpn ja]
 grid [ttk::label .misc.sl -text "Язык субтитров:"] -row 1 -column 0 -padx 2 -sticky w
-grid [ttk::entry .misc.sublang -width 6 -textvariable slang] -row 1 -column 1 -sticky w
+grid [ttk::combobox .misc.sublang -width 3 -textvariable slang] -row 1 -column 1 -sticky w
+.misc.sublang configure -values [list rus ru eng en jpn ja]
 grid [ttk::button .misc.help -text "?" -width 1 -command showhelp] -row 1 -rowspan 1 -column 4 -pady 2 -sticky nswe
-grid [ttk::entry .misc.subcp -width 10 -textvariable subcp] -row 1 -column 3 -sticky w
+grid [ttk::combobox .misc.subcp -width 11 -textvariable subcp] -row 1 -column 3 -sticky w
+.misc.subcp configure -values [list CP1251 UTF-8 ISO-8859-1 ISO-8859-2 ISO-8859-3 ISO-8859-4 ISO-8859-5 ISO-8859-6 ISO-8859-7 ISO-8859-8 ISO-8859-9 ISO-8859-10 ISO-8859-13 ISO-8859-14 ISO-8859-15 CP1250 CP1252 CP1253 CP1254 CP1255 CP1256 CP1257 CP1258 KOI8-R CP895 CP852 UCS-2 UCS-4 UTF-7 CP866]
 grid [ttk::checkbutton .misc.normalize -text "Нормализовать" -variable normalize -state enabled] -row 0 -column 2 -pady 2 -sticky w
 grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state enabled] -row 2 -column 2 -pady 2 -sticky w
-grid [ttk::button .misc.analyze -text "Анализ файла.." -width 4 -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
+grid [ttk::button .misc.analyze -text "Анализ файла.." -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
 grid [ttk::checkbutton .misc.usesubs -text "Вкл.                Кодировка:" -variable subsenabled -state enabled] -row 1 -column 2 -sticky w
 grid columnconfigure . 0 -weight 1
 grid columnconfigure .inframe 0 -weight 1
