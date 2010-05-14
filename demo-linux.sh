@@ -1,1 +1,1 @@
-wish8.5 src/aencoder.tcl
+wish8.5 src/aencoder_win.tcl

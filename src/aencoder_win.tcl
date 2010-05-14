@@ -68,16 +68,21 @@ proc analyze {} {
     }
 }
 
+proc detectlinuxos {} {
+
+if {[file exist "/home"]} { 
+
+    	    tk_messageBox -message "/home exist => Linux OS" -icon error -type ok
+			return 1
+	}  
+    	    tk_messageBox -message "WindowZZ" -icon error -type ok
+			return 0
+}
+
 proc getrunningdir {} {
     global argv0
 
-	if {[file exist "islinux"]} { 
-
-
-
-
-	} else {
-	
+		
 	    if {[file exist "[pwd]\\aEncoder.exe"]} {
 	        set curdir [pwd]
     	} else {
@@ -570,6 +575,7 @@ grid rowconfigure .options.bitrate {1 5} -weight 1
 grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
+set islinuxos [detectlinuxos]
 set curdir [getrunningdir]
 checkfiles $curdir
 loaddirs
