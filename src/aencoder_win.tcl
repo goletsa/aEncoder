@@ -70,19 +70,29 @@ proc analyze {} {
 
 proc getrunningdir {} {
     global argv0
-    if {[file exist "[pwd]\\aEncoder.exe"]} {
-        set curdir [pwd]
-    } else {
-        foreach curpath [split $::env(path) ;] {
-            if {[file exist "${curpath}\\aEncoder.exe"]} {
-                set curdir "${curpath}"
-            }
-        }
-    }
-    if {![file exist "$curdir\\tools"]} {
-        tk_messageBox -message "Error locating tools folder." -icon error -type ok
-        exit
-    }
+
+	if {[file exist "islinux"]} { 
+
+
+
+
+	} else {
+	
+	    if {[file exist "[pwd]\\aEncoder.exe"]} {
+	        set curdir [pwd]
+    	} else {
+        	foreach curpath [split $::env(path) ;] {
+            	if {[file exist "${curpath}\\aEncoder.exe"]} {
+	                set curdir "${curpath}"
+            	}
+	        }
+    	}
+    	if {![file exist "$curdir\\tools"]} {
+    	    tk_messageBox -message "Error locating tools folder." -icon error -type ok
+    	    exit
+	    }
+
+	}
     cd $curdir
     return [string map {/ \\} $curdir]
 }
