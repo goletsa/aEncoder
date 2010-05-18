@@ -73,11 +73,12 @@ proc detectlinuxos {} {
 if {[catch { exec uname} msg] } {
 	puts "No uname command => probably it Windows OS "
 	puts "Error: $::errorInfo"
+	tk_messageBox -message "This is WINDOWS!" -icon error -type ok;}
 	set islinux 0
 } else {
 	set data [myexec "uname"]
 	if {[string equal -nocase -length 5 $data "Linux"]} {
-	#tk_messageBox -message "Uname data: $data" -icon error -type ok;}
+	tk_messageBox -message "Uname data: $data" -icon error -type ok;}
 	puts "Running on: [myexec "uname -a"]"
 	set islinux 1
 		}	
@@ -85,7 +86,7 @@ if {[catch { exec uname} msg] } {
 if {$islinux} { 
 	return 1
 	} else {
-			return 0
+	return 0
 	}
 
 }
