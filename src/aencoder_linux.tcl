@@ -68,18 +68,23 @@ proc analyze {} {
     }
 }
 
-proc detectlinuxos {} {
 
+proc detectlinuxos {} {
+global isdebug
 if {[catch { exec uname} msg] } {
-	puts "No uname command => probably it Windows OS "
-	puts "Error: $::errorInfo"
-	tk_messageBox -message "This is WINDOWS!" -icon error -type ok
+	if {$isdebug} {
+		puts "No uname command => probably it Windows OS "
+		puts "Error: $::errorInfo"
+		#tk_messageBox -message "This is WINDOWS!" -icon error -type ok
+		}
 	set islinux 0
 } else {
 	set data [myexec "uname"]
 	if {[string equal -nocase -length 5 $data "Linux"]} {
-	tk_messageBox -message "Uname data: $data" -icon error -type ok;}
-	puts "Running on: [myexec "uname -a"]"
+	if {$isdebug} {
+		#tk_messageBox -message "Uname: $data" -icon error -type ok
+		puts "Running on: [myexec "uname -a"]";}
+	}
 	set islinux 1
 		}	
 
@@ -91,11 +96,53 @@ if {$islinux} {
 
 }
 
+proc getsettingspath {} {
+global isdebug islinux
+
+if {$islinux} {
+	if {[file exist {~/.aencoder}]} {
+		
+		if {$isdebug} {
+			puts "~/.aencoder exist. "
+			}
+		
+		if {[file isdirectory ~/.aencoder]} {
+			puts "~/.aencoder is a directory"
+			#if {[file exist {~/.aencoder/config}]} {
+			#	return ~/.aencoder/config
+			#	} else {
+			#		puts "no config file"
+					return ~/.aencoder
+					}
+			
+			} else {
+						puts "~/.aencoder is not directory"
+						}		
+	
+
+		} else {
+				if {$isdebug} {
+				puts "no ~./aencoder dir. Creating..."
+				}
+				file mkdir ~/.aencoder
+				return ~/.aencoder
+		
+			}
+
+	} else {
+		#maybe some windows code here	
+		}
+}
+
+
+
 proc getrunningdir {} {
     global argv0
-		
-		puts "Linux: $islinux"
-		
+	global islinux 
+	
+
+# WindowZ
+	if	{[expr $islinux==0]} {
 	    if {[file exist "[pwd]\\aEncoder.exe"]} {
 	        set curdir [pwd]
     	} else {
@@ -113,6 +160,14 @@ proc getrunningdir {} {
 	
     cd $curdir
     return [string map {/ \\} $curdir]
+	} else {
+# Linux code
+
+
+
+}
+
+
 }
 
 proc checkfile {file} {
@@ -588,8 +643,12 @@ grid rowconfigure .options.bitrate {1 5} -weight 1
 grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
+if {$argv == "-debug"} {set isdebug 1} else {set isdebug 0}
 set islinux [detectlinuxos]
-puts "Is linux OS? $islinux"
+if {$isdebug} {puts "Is linux OS? $islinux"}
+
+set settingspath [getsettingspath]
+puts "Settings path: $settingspath"
 
 set curdir [getrunningdir]
 checkfiles $curdir
