@@ -61,7 +61,7 @@ proc getlangopts {} {
 
 proc analyze {} {
     global vdata
-    set file [string map {/ \\} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]]
+    set file [string map {/ \/} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]]
     getvidinfo $file
     if {[catch {tk_messageBox -icon info -type ok -title "Результат анализа файла" -message "Разрешение: $vdata(width)x$vdata(height)\nПропорции: $vdata(aspect)\nЯзык аудио: $vdata(atracks)\nЯзык субтитров: $vdata(stracks)"}]} {
         tk_messageBox -icon error -type ok -title "Ошибка" -message "Неверный формат файла!"
@@ -250,12 +250,12 @@ proc filt {file} {
 }
 
 proc execmenc {label args} {
-    global progvar curdir pipe pause
+    global progvar curdir pipe pause mencoderpath
     set progvar 0
     .progress.label configure -text $label
     wlog "\n--------------------------------------------------------------------------"
-    wlog "Executing mencoder with args: ${curdir}\\tools\\mencoder.exe [join $args]"
-    set pipe [open "| [filt \"${curdir}\\tools\\mencoder.exe\"] [filt [join $args]] 2>@1" r+]
+    wlog "Executing mencoder with args: ${mencoderpath} [join $args]"
+    set pipe [open "| $::mencoderpath [filt [join $args]] 2>@1" r+]
     fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
@@ -274,19 +274,19 @@ proc execmenc {label args} {
 }
 
 proc muxvid {outfile fps sound} {
-    wlog "\n--------------------------------------------------------------------------"
-    wlog "Executing $::curdir\\tools\\mp4box.exe -fps $fps -aviraw video $::curdir\\video.avi"
-    myexec "[filt \"$::curdir\\tools\\mp4box.exe\"] -fps $fps -aviraw video [filt \"$::curdir\\video.avi\"]"
+	wlog "\n--------------------------------------------------------------------------"
+    wlog "Executing $::mp4boxpath -fps $fps -aviraw video $::workdir\\video.avi"
+    myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw video [filt \"$::workdir\\video.avi\"]"
     if {$sound} {
         wlog "\n--------------------------------------------------------------------------"
-        wlog "Executing $::curdir\\tools\\mp4box.exe -fps $fps -aviraw audio $::curdir\\video.avi"
-        myexec "[filt \"$::curdir\\tools\\mp4box.exe\"] -fps $fps -aviraw audio [filt \"$::curdir\\video.avi\"]"
-        file rename -force $::curdir\\video_audio.raw $::curdir\\audio.aac
+        wlog "Executing $::mp4boxpath -fps $fps -aviraw audio $::workdir\\video.avi"
+        myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw audio [filt \"$::workdir\\video.avi\"]"
+        file rename -force $::workdir\\video_audio.raw $::workdir\\audio.aac
     }
-    file delete -force $::curdir\\video.avi
-    muxvidint $outfile $::curdir\\video_video.h264#video $fps
+    file delete -force $::workdir\\video.avi
+    muxvidint $outfile $::workdir\\video_video.h264#video $fps
     if {$sound} {
-        muxvidint $outfile $::curdir\\audio.aac#audio $fps
+        muxvidint $outfile $::workdir\\audio.aac#audio $fps
     }
 }
 
@@ -294,7 +294,7 @@ proc muxvidint {outfile filetoadd fps} {
     global curdir pipe pause
     wlog "\n--------------------------------------------------------------------------"
     wlog "Starting to mux $filetoadd into $outfile with $fps fps"
-    set pipe [open "| [filt \"$::curdir\\tools\\mp4box.exe\"] -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
+    set pipe [open "| [filt \"$::mp4boxpath\"] -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
     fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
@@ -320,11 +320,11 @@ proc myexec {cmd} {
 
 
 proc getvidinfo {infile} {
-    global vdata
+    global vdata mencoderpath
     if {[info exist vdata]} {unset vdata}
     wlog "\n--------------------------------------------------------------------------"
     wlog "Getting video info for $infile"
-    set data [myexec "[filt \"$::curdir\\tools\\mencoder.exe\"] -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o NUL -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
+    set data [myexec "mencoder -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o NUL -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
     #wlog $data
     set vdata(sound) [regexp -line {^ID_AUDIO_ID} $data]
     regexp -all -line {size:(\d+)x(\d+)} $data tmp vdata(width) vdata(height)
@@ -361,8 +361,8 @@ proc getvidinfo {infile} {
 }
 
 proc cleanup {} {
-    file delete $::curdir\\audio.aac
-    file delete $::curdir\\video_video.h264
+    file delete $::workdir\\audio.aac
+    file delete $::workdir\\video_video.h264
     catch {file delete divx2pass.log}
     catch {file delete divx2pass.log.mbtree}
 }
@@ -390,6 +390,8 @@ proc convert {} {
         wlog "Starting to convert $file to $outfile"
         getvidinfo $file
         set fps $::vdata(fps)
+		wlog "[turbo1stpass $file $fps $::vdata(sound)]"
+		#execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]
         if {[catch {execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         if {[catch {execmenc "(2/3)" [normalsecondpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         set progvar 0
@@ -435,7 +437,7 @@ proc turbo1stpass {infile fps sound} {
 }
 
 proc normalsecondpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::curdir\\video.avi\"" $fps]
+    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::workdir\\video.avi\"" $fps]
 }
 
 proc getnormalize {} {
@@ -577,7 +579,7 @@ grid [listbox .inframe.files -width 40 -height 5 -selectmode extended -yscrollco
 grid [ttk::button .inframe.add -text "Добавить..." -command {addfiles} -width 10] -row 0 -column 2 -padx 1 -sticky nswe
 grid [ttk::button .inframe.remove -text "Удалить" -command {removefiles} -width 10] -row 1 -column 2 -padx 1 -sticky nswe
 grid [ttk::entry .outframe.fileentry -width 40 -textvariable outdir -state disabled] -row 0 -column 0 -sticky we
-grid [ttk::button .outframe.browse -text "Обзор..." -command {set outdir [string map {/ \\} [tk_chooseDirectory -initialdir $::outdir -mustexist 1]]} -width 8] -row 0 -column 1 -padx 1
+grid [ttk::button .outframe.browse -text "Обзор..." -command {set outdir [string map {/ \/} [tk_chooseDirectory -initialdir $::outdir -mustexist 1]]} -width 8] -row 0 -column 1 -padx 1
 grid [ttk::frame .options.bitrate] -column 0 -row 0 -sticky ns
 grid [ttk::label .options.bitrate.label -text "Битрейт (kbit/s)"] -column 0 -row 0 -columnspan 6 -sticky n
 grid [ttk::radiobutton .options.bitrate.vhd -text "Низкое качество" -variable br -value 0 -command setbr] -row 2 -column 0 -columnspan 6 -sticky w
@@ -644,7 +646,7 @@ set curdir ~
 
 loaddirs
 focus -force .
-
+set workdir ~/tmp
 wm protocol . WM_DELETE_WINDOW exit
 
 if {$argv == "-debug"} {
