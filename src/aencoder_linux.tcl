@@ -275,18 +275,18 @@ proc execmenc {label args} {
 
 proc muxvid {outfile fps sound} {
 	wlog "\n--------------------------------------------------------------------------"
-    wlog "Executing $::mp4boxpath -fps $fps -aviraw video $::workdir\\video.avi"
-    myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw video [filt \"$::workdir\\video.avi\"]"
+    wlog "Executing $::mp4boxpath -fps $fps -aviraw video $::workdir/video.avi"
+    myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw video [filt \"$::workdir/video.avi\"]"
     if {$sound} {
         wlog "\n--------------------------------------------------------------------------"
-        wlog "Executing $::mp4boxpath -fps $fps -aviraw audio $::workdir\\video.avi"
-        myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw audio [filt \"$::workdir\\video.avi\"]"
+        wlog "Executing $::mp4boxpath -fps $fps -aviraw audio $::workdir/video.avi"
+        myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw audio [filt \"$::workdir/video.avi\"]"
         file rename -force $::workdir\\video_audio.raw $::workdir\\audio.aac
     }
-    file delete -force $::workdir\\video.avi
-    muxvidint $outfile $::workdir\\video_video.h264#video $fps
+    file delete -force $::workdir/video.avi
+    muxvidint $outfile $::workdir/video_video.h264#video $fps
     if {$sound} {
-        muxvidint $outfile $::workdir\\audio.aac#audio $fps
+        muxvidint $outfile $::workdir/audio.aac#audio $fps
     }
 }
 
@@ -392,6 +392,7 @@ proc convert {} {
         set fps $::vdata(fps)
 		wlog "[turbo1stpass $file $fps $::vdata(sound)]"
 		#execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]
+		cd $::workdir
         if {[catch {execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         if {[catch {execmenc "(2/3)" [normalsecondpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         set progvar 0
