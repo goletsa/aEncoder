@@ -1,4 +1,4 @@
-set version "0.99.4, by Sunlight (4pda.ru)"
+set version "0.99.4-linux"
 
 proc showhelp {} {
 tk_messageBox -message {
@@ -135,59 +135,42 @@ if {$islinux} {
 }
 
 
+proc checkbins {} {
+# Check programs - mencoder, MP4Box
+global isdebug mencoderpath mp4boxpath
 
-proc getrunningdir {} {
-    global argv0
-	global islinux 
+if {[catch { exec which mencoder} msg] } {
+	if {$isdebug} {
+		puts "No mencoder command "
+		puts "Error: $::errorInfo"
+		tk_messageBox -message "No mencoder found \nPlease install mencoder. " -icon error -type ok
+		exit
+		}
+		return -1
+} else {
+	set data [myexec "which mencoder"]
+	puts "Mencoder found: $data"
+	set mencoderpath $data
 	
-
-# WindowZ
-	if	{[expr $islinux==0]} {
-	    if {[file exist "[pwd]\\aEncoder.exe"]} {
-	        set curdir [pwd]
-    	} else {
-        	foreach curpath [split $::env(path) ;] {
-            	if {[file exist "${curpath}\\aEncoder.exe"]} {
-	                set curdir "${curpath}"
-            	}
-	        }
-    	}
-    	if {![file exist "$curdir\\tools"]} {
-    	    tk_messageBox -message "Error locating tools folder." -icon error -type ok
-    	    exit
-	    }
-
+	if {[catch { exec which MP4Box} msg]} {
+		if {$isdebug} {
+		puts "No MP4Box command "
+		puts "Error: $::errorInfo"
+		tk_messageBox -message "No MP4Box found \nPlease install gpac >=0.4.4. " -icon error -type ok
+		exit
+		}
+		return -1
+		} else {
+			set data [myexec "which MP4Box"]
+			puts "MP4Box found: $data"
+			set mp4boxpath $data
+			return 0
+			}
 	
-    cd $curdir
-    return [string map {/ \\} $curdir]
-	} else {
-# Linux code
-
-
+	}
 
 }
 
-
-}
-
-proc checkfile {file} {
-    if {[file exist $file]} {return 1}
-    return [file tail $file]
-}
-
-proc checkfiles {curdir} {
-    set toolsdir "$curdir\\tools"
-    set missing ""
-    foreach cur [list "MP4Box.exe" "mencoder.exe"] {
-        if {[set file [checkfile $toolsdir\\$cur]] != 1} {
-            lappend missing $file
-        }
-    }
-    if {$missing != ""} {
-        tk_messageBox -message "Can not continue, the following file(s) are missing from the tools folder: [join $missing]" -icon error -type ok
-        exit
-    }
-}
 
 proc getoutfile {dir file} {
     set outfile "[string map {/ \\} [file normalize $dir]\\[file rootname [file tail $file]]]"
@@ -464,10 +447,10 @@ proc getnormalize {} {
 proc addfiles {} {
     global outdir initialdir
     set files [tk_getOpenFile -initialdir $initialdir -multiple 1 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]
-    set initialdir [string map {/ \\} [file dirname [lindex $files 0]]]
+    set initialdir [string map {/ \/} [file dirname [lindex $files 0]]]
     set filestoadd ""
     foreach file [lsort -unique $files] {
-        set file [string map {/ \\} $file]
+        set file [string map {/ \/} $file]
         set dup 0
         foreach cur [.inframe.files get 0 end] {
             if {$cur == $file} {
@@ -481,7 +464,7 @@ proc addfiles {} {
     if {$filestoadd != ""} {
         eval ".inframe.files insert end $filestoadd"
         if {$outdir == ""} {
-            set outdir [string map {/ \\} [file normalize [file dirname [lindex $filestoadd 0]]]]
+            set outdir [string map {/ \/} [file normalize [file dirname [lindex $filestoadd 0]]]]
         }
     }
 }
@@ -524,8 +507,9 @@ proc wlog {msg} {
 
 proc loaddirs {} {
     global initialdir outdir subcp normalize subsenabled cropwidth alang slang br brv bra resolution resx resy ass
-    if {[file exist "$::curdir\\aEncoder.ini"]} {
-        set fs [open $::curdir\\aEncoder.ini r]
+    if {[file exist "$::settingspath/config"]} {
+		puts "Load ~/.aencoder/config"
+        set fs [open $::settingspath/config r]
         fconfigure $fs -blocking 1
         set initialdir [gets $fs]
         set outdir [gets $fs]
@@ -544,17 +528,17 @@ proc loaddirs {} {
         set ass [gets $fs]
         close $fs
         if {![file exist $initialdir]} {
-            set initialdir ""
+            set initialdir "~"
         }
         if {![file exist $outdir]} {
-            set outdir ""
+            set outdir "~"
         }
     }
 }
 
 package req tile
-set initialdir ""
-set outdir ""
+set initialdir "~"
+set outdir "~"
 set subcp "CP1251"
 set normalize "0"
 set subsenabled "0"
@@ -644,14 +628,19 @@ grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
 if {$argv == "-debug"} {set isdebug 1} else {set isdebug 0}
+
 set islinux [detectlinuxos]
 if {$isdebug} {puts "Is linux OS? $islinux"}
 
 set settingspath [getsettingspath]
 puts "Settings path: $settingspath"
 
-set curdir [getrunningdir]
-checkfiles $curdir
+checkbins
+set curdir ~
+# Deprecated
+#set curdir [getrunningdir]
+#checkfiles $curdir
+
 loaddirs
 focus -force .
 
@@ -659,7 +648,7 @@ wm protocol . WM_DELETE_WINDOW exit
 
 if {$argv == "-debug"} {
     set log 1
-    set logfs [open $curdir/log.txt w]
+    set logfs [open $settingspath/log.txt w]
     fconfigure $logfs -buffering none
     wlog "Version: $::version"
 } {
@@ -670,7 +659,7 @@ rename exit __exit
 proc exit {args} {
     catch {exec tskill [pid $::pipe]}
     if {$::initialdir != "" && $::outdir != ""} {
-        set fs [open "$::curdir\\aEncoder.ini" w]
+        set fs [open "$::settingspath/config" w]
         puts $fs $::initialdir
         puts $fs $::outdir
         puts $fs $::subcp
