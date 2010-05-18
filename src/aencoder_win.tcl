@@ -93,7 +93,8 @@ if {$islinux} {
 
 proc getrunningdir {} {
     global argv0
-
+		
+		puts "Linux: $islinux"
 		
 	    if {[file exist "[pwd]\\aEncoder.exe"]} {
 	        set curdir [pwd]
