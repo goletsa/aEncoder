@@ -70,13 +70,24 @@ proc analyze {} {
 
 proc detectlinuxos {} {
 
-if {[file exist "/home"]} { 
+if {[catch { exec uname} msg] } {
+	puts "No uname command => probably it Windows OS "
+	puts "Error: $::errorInfo"
+	set islinux 0
+} else {
+	set data [myexec "uname"]
+	if {[string equal -nocase -length 5 $data "Linux"]} {
+	#tk_messageBox -message "Uname data: $data" -icon error -type ok;}
+	puts "Running on: [myexec "uname -a"]"
+	set islinux 1
+		}	
 
-    	    tk_messageBox -message "/home exist => Linux OS" -icon error -type ok
-			return 1
-	}  
-    	    tk_messageBox -message "WindowZZ" -icon error -type ok
+if {$islinux} { 
+	return 1
+	} else {
 			return 0
+	}
+
 }
 
 proc getrunningdir {} {
@@ -575,7 +586,9 @@ grid rowconfigure .options.bitrate {1 5} -weight 1
 grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
-set islinuxos [detectlinuxos]
+set islinux [detectlinuxos]
+puts "Is linux OS? $islinux"
+
 set curdir [getrunningdir]
 checkfiles $curdir
 loaddirs
