@@ -73,7 +73,7 @@ proc detectlinuxos {} {
 if {[catch { exec uname} msg] } {
 	puts "No uname command => probably it Windows OS "
 	puts "Error: $::errorInfo"
-	tk_messageBox -message "This is WINDOWS!" -icon error -type ok;}
+	tk_messageBox -message "This is WINDOWS!" -icon error -type ok
 	set islinux 0
 } else {
 	set data [myexec "uname"]
