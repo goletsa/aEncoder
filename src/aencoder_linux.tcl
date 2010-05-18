@@ -18,7 +18,7 @@ tk_messageBox -message {
 
 proc getsubtitleopts {filename} {
     if {!$::subsenabled} {return ""}
-    set cmd "-subfont-text-scale 3.8 -font \"$::curdir\\tools\\tahoma.ttf\" -nofontconfig -subcp $::subcp "
+    set cmd "-subfont-text-scale 3.8 -font \"$::settingspath/tahoma.ttf\" -nofontconfig -subcp $::subcp "
     
     if {$::ass == "1"} {
     append cmd " -ass "}
@@ -174,7 +174,7 @@ if {[catch { exec which mencoder} msg] } {
 
 
 proc getoutfile {dir file} {
-    set outfile "[string map {/ \\} [file normalize $dir]\\[file rootname [file tail $file]]]"
+    set outfile "[string map {/ \/} [file normalize $dir]/[file rootname [file tail $file]]]"
     while {[file exist [append outfile .mp4]]} {}
     return $outfile
 }
@@ -237,7 +237,7 @@ proc enablegui {} {
     .options.crop configure -state enabled
     .misc.analyze configure -state enabled
     .misc.help configure -state enabled
-    .misc.ass configure -state enabled
+    .misc.ass configure -state disabled
     .misc.subcp configure -state enabled
     setres
     setbr
@@ -246,7 +246,7 @@ proc enablegui {} {
 }
 
 proc filt {file} {
-    return [string map {\\ \\\\} $file]
+    return [string map {/ /} $file]
 }
 
 proc execmenc {label args} {
@@ -275,18 +275,18 @@ proc execmenc {label args} {
 
 proc muxvid {outfile fps sound} {
 	wlog "\n--------------------------------------------------------------------------"
-    wlog "Executing $::mp4boxpath -fps $fps -aviraw video $::workdir/video.avi"
-    myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw video [filt \"$::workdir/video.avi\"]"
+    wlog "Executing $::mp4boxpath -fps $fps -aviraw video $::outdir/video.avi"
+    myexec "MP4Box -fps $fps -aviraw video [filt \"$::outdir/video.avi\"]"
     if {$sound} {
         wlog "\n--------------------------------------------------------------------------"
-        wlog "Executing $::mp4boxpath -fps $fps -aviraw audio $::workdir/video.avi"
-        myexec "[filt \"$::mp4boxpath\"] -fps $fps -aviraw audio [filt \"$::workdir/video.avi\"]"
-        file rename -force $::workdir\\video_audio.raw $::workdir\\audio.aac
+        wlog "Executing $::mp4boxpath -fps $fps -aviraw audio $::outdir/video.avi"
+        myexec "MP4Box -fps $fps -aviraw audio [filt \"$::outdir/video.avi\"]"
+        file rename -force $::outdir/video_audio.raw $::outdir/audio.aac
     }
-    file delete -force $::workdir/video.avi
-    muxvidint $outfile $::workdir/video_video.h264#video $fps
+    file delete -force $::outdir/video.avi
+    muxvidint $outfile $::outdir/video_video.h264#video $fps
     if {$sound} {
-        muxvidint $outfile $::workdir/audio.aac#audio $fps
+        muxvidint $outfile $::outdir/audio.aac#audio $fps
     }
 }
 
@@ -294,7 +294,7 @@ proc muxvidint {outfile filetoadd fps} {
     global curdir pipe pause
     wlog "\n--------------------------------------------------------------------------"
     wlog "Starting to mux $filetoadd into $outfile with $fps fps"
-    set pipe [open "| [filt \"$::mp4boxpath\"] -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
+    set pipe [open "| MP4Box -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
     fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
@@ -324,7 +324,7 @@ proc getvidinfo {infile} {
     if {[info exist vdata]} {unset vdata}
     wlog "\n--------------------------------------------------------------------------"
     wlog "Getting video info for $infile"
-    set data [myexec "mencoder -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o NUL -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
+    set data [myexec "mencoder -nosound -ovc x264 -x264encopts bitrate=1000 -frames 1 -o /dev/null -vf scale=-10:-1,scale=0:-10 -msglevel decvideo=4:identify=5:statusline=5 [filt \"$infile\"]"]
     #wlog $data
     set vdata(sound) [regexp -line {^ID_AUDIO_ID} $data]
     regexp -all -line {size:(\d+)x(\d+)} $data tmp vdata(width) vdata(height)
@@ -361,8 +361,8 @@ proc getvidinfo {infile} {
 }
 
 proc cleanup {} {
-    file delete $::workdir\\audio.aac
-    file delete $::workdir\\video_video.h264
+    file delete $::outdir/audio.aac
+    file delete $::outdir/video_video.h264
     catch {file delete divx2pass.log}
     catch {file delete divx2pass.log.mbtree}
 }
@@ -392,7 +392,7 @@ proc convert {} {
         set fps $::vdata(fps)
 		wlog "[turbo1stpass $file $fps $::vdata(sound)]"
 		#execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]
-		cd $::workdir
+		cd $::outdir
         if {[catch {execmenc "(1/3)" [turbo1stpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         if {[catch {execmenc "(2/3)" [normalsecondpass $file $fps $::vdata(sound)]}]} {set error 1; break}
         set progvar 0
@@ -434,11 +434,11 @@ proc getsound {sound} {
 }
 
 proc turbo1stpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o NUL" $fps]
+    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o /dev/null" $fps]
 }
 
 proc normalsecondpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::workdir\\video.avi\"" $fps]
+    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::outdir/video.avi\"" $fps]
 }
 
 proc getnormalize {} {
@@ -469,6 +469,7 @@ proc addfiles {} {
         eval ".inframe.files insert end $filestoadd"
         if {$outdir == ""} {
             set outdir [string map {/ \/} [file normalize [file dirname [lindex $filestoadd 0]]]]
+			#set workdir $outdir
         }
     }
 }
@@ -616,7 +617,7 @@ grid [ttk::button .misc.help -text "?" -width 1 -command showhelp] -row 1 -rowsp
 grid [ttk::combobox .misc.subcp -width 11 -textvariable subcp] -row 1 -column 3 -sticky w
 .misc.subcp configure -values [list CP1251 UTF-8 ISO-8859-1 ISO-8859-2 ISO-8859-3 ISO-8859-4 ISO-8859-5 ISO-8859-6 ISO-8859-7 ISO-8859-8 ISO-8859-9 ISO-8859-10 ISO-8859-13 ISO-8859-14 ISO-8859-15 CP1250 CP1252 CP1253 CP1254 CP1255 CP1256 CP1257 CP1258 KOI8-R CP895 CP852 UCS-2 UCS-4 UTF-7 CP866]
 grid [ttk::checkbutton .misc.normalize -text "Нормализовать" -variable normalize -state enabled] -row 0 -column 2 -pady 2 -sticky w
-grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state enabled] -row 2 -column 2 -pady 2 -sticky w
+grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state disabled] -row 2 -column 2 -pady 2 -sticky w
 grid [ttk::button .misc.analyze -text "Анализ файла.." -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
 grid [ttk::checkbutton .misc.usesubs -text "Вкл.                Кодировка:" -variable subsenabled -state enabled] -row 1 -column 2 -sticky w
 grid columnconfigure . 0 -weight 1
@@ -647,7 +648,7 @@ set curdir ~
 
 loaddirs
 focus -force .
-set workdir ~/tmp
+#set workdir $outdir
 wm protocol . WM_DELETE_WINDOW exit
 
 if {$argv == "-debug"} {
