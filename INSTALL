@@ -1,0 +1,16 @@
+Installation notes for aEncoder for linux
+
+1) Your must have installed packages:
+	- mencoder
+	- tk8.5
+	- tcl8.5
+	- gpac >= 0.4.4
+
+In debian-like systems you can install it by simple command:
+	aptitude install tcl8.5 tk8.5 gpac mencoder
+
+NOTE: Debian users have this packes in debian-multimedia repository
+
+2) Just run install.sh. It check binaries and create aEncoder start script
+
+3) Profit!
