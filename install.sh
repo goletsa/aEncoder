@@ -5,7 +5,7 @@ echo "Welcome to aEncoder Linux Beta"
 echo "Testing binaries:"
 echo "Your must have installed: tk8.5, mencoder, gpac >= 0.4.4"
 
-for bins in wish tclsh mencoder MP4Box;
+for bins in wish8.5 tclsh mencoder MP4Box;
     do
 	echo $bins":"
 	tmppath=`which $bins`
@@ -26,7 +26,7 @@ fi
 
 echo "#!/bin/bash" > aEncoder
 echo "" >> aEncoder
-echo "`which wish` aEncoder.tcl" >> aEncoder
+echo "`which wish8.5` aEncoder.tcl" >> aEncoder
 chmod +x aEncoder
 
 exit 0
