@@ -1,4 +1,4 @@
-set version "0.99.4, by Sunlight (4pda.ru)"
+set version "0.99.5 (4pda.ru)"
 
 proc showhelp {} {
 tk_messageBox -message {
@@ -18,10 +18,10 @@ tk_messageBox -message {
 
 proc getsubtitleopts {filename} {
     if {!$::subsenabled} {return ""}
-    set cmd "-subfont-text-scale 3.8 -font \"$::curdir\\tools\\tahoma.ttf\" -nofontconfig -subcp $::subcp "
+    set cmd "-subfont-text-scale 3.8 -font \"C:\\Windows\\Fonts\\tahoma.ttf\" -nofontconfig -subcp $::subcp "
     
     if {$::ass == "1"} {
-    append cmd " -ass "}
+    append cmd " -ass -unicode "}
     
     if {[file exist [file rootname $filename].ssa]} {
         append cmd "-sub \"[file rootname $filename].ssa\""
@@ -61,56 +61,32 @@ proc getlangopts {} {
 
 proc analyze {} {
     global vdata
-    set file [string map {/ \\} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]]
+    set file [string map {/ \\} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "All Files" *] [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]] [list "DVD Video" *.ifo] ]]]
+    if {$file != ""} {
     getvidinfo $file
+    } else {
+    return ""
+    }
     if {[catch {tk_messageBox -icon info -type ok -title "Результат анализа файла" -message "Разрешение: $vdata(width)x$vdata(height)\nПропорции: $vdata(aspect)\nЯзык аудио: $vdata(atracks)\nЯзык субтитров: $vdata(stracks)"}]} {
         tk_messageBox -icon error -type ok -title "Ошибка" -message "Неверный формат файла!"
     }
 }
 
-proc detectlinuxos {} {
-
-if {[catch { exec uname} msg] } {
-	puts "No uname command => probably it Windows OS "
-	puts "Error: $::errorInfo"
-	tk_messageBox -message "This is WINDOWS!" -icon error -type ok
-	set islinux 0
-} else {
-	set data [myexec "uname"]
-	if {[string equal -nocase -length 5 $data "Linux"]} {
-	tk_messageBox -message "Uname data: $data" -icon error -type ok;}
-	puts "Running on: [myexec "uname -a"]"
-	set islinux 1
-		}	
-
-if {$islinux} { 
-	return 1
-	} else {
-	return 0
-	}
-
-}
-
 proc getrunningdir {} {
     global argv0
-		
-		puts "Linux: $islinux"
-		
-	    if {[file exist "[pwd]\\aEncoder.exe"]} {
-	        set curdir [pwd]
-    	} else {
-        	foreach curpath [split $::env(path) ;] {
-            	if {[file exist "${curpath}\\aEncoder.exe"]} {
-	                set curdir "${curpath}"
-            	}
-	        }
-    	}
-    	if {![file exist "$curdir\\tools"]} {
-    	    tk_messageBox -message "Error locating tools folder." -icon error -type ok
-    	    exit
-	    }
-
-	
+    if {[file exist "[pwd]\\aEncoder.exe"]} {
+        set curdir [pwd]
+    } else {
+        foreach curpath [split $::env(path) ;] {
+            if {[file exist "${curpath}\\aEncoder.exe"]} {
+                set curdir "${curpath}"
+            }
+        }
+    }
+    if {![file exist "$curdir\\tools"]} {
+        tk_messageBox -message "Error locating tools folder." -icon error -type ok
+        exit
+    }
     cd $curdir
     return [string map {/ \\} $curdir]
 }
@@ -175,6 +151,7 @@ proc disablegui {} {
     .misc.help configure -state disabled
     .misc.ass configure -state disabled
     .misc.subcp configure -state disabled
+    .misc.shutdown configure -state disabled
 }
 
 proc enablegui {} {
@@ -200,6 +177,7 @@ proc enablegui {} {
     .misc.help configure -state enabled
     .misc.ass configure -state enabled
     .misc.subcp configure -state enabled
+    .misc.shutdown configure -state enabled
     setres
     setbr
     .progress.label configure -text "Готово!"
@@ -217,10 +195,10 @@ proc execmenc {label args} {
     wlog "\n--------------------------------------------------------------------------"
     wlog "Executing mencoder with args: ${curdir}\\tools\\mencoder.exe [join $args]"
     set pipe [open "| [filt \"${curdir}\\tools\\mencoder.exe\"] [filt [join $args]] 2>@1" r+]
-    fconfigure $pipe -buffering none -blocking 0
+#    fconfigure $pipe -buffering none -blocking 1
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
-        set line [gets $pipe]
+       set line [gets $pipe]
         if {$line != ""} {
             if {[regexp {^Pos.+\(( ?\d+)%\)} $line tmp val]} {
                 set progvar $val
@@ -256,7 +234,7 @@ proc muxvidint {outfile filetoadd fps} {
     wlog "\n--------------------------------------------------------------------------"
     wlog "Starting to mux $filetoadd into $outfile with $fps fps"
     set pipe [open "| [filt \"$::curdir\\tools\\mp4box.exe\"] -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
-    fconfigure $pipe -buffering none -blocking 0
+#    fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
         set line [gets $pipe]
@@ -369,6 +347,11 @@ proc convert {} {
             tk_messageBox -message "Muxing failed.[debugmsg]" -icon error -type ok
             wlog "Error muxing..."
         }
+        return ""
+    }
+    if {$::shutdown == "1"} {
+    wlog "Shutdown PC..."
+    set data [myexec "shutdown -s -t 0"]
     }
 }
 
@@ -392,7 +375,7 @@ proc getsound {sound} {
 }
 
 proc turbo1stpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o NUL" $fps]
+    return [fixfps "\"$infile\" -of avi -nosound -ovc x264 -x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:no-cabac -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o NUL" $fps]
 }
 
 proc normalsecondpass {infile fps sound} {
@@ -408,7 +391,7 @@ proc getnormalize {} {
 
 proc addfiles {} {
     global outdir initialdir
-    set files [tk_getOpenFile -initialdir $initialdir -multiple 1 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]
+    set files [tk_getOpenFile -initialdir $initialdir -multiple 1 -filetypes [list [list "All Files" *] [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]] [list "DVD Video" *.ifo] ]]
     set initialdir [string map {/ \\} [file dirname [lindex $files 0]]]
     set filestoadd ""
     foreach file [lsort -unique $files] {
@@ -454,7 +437,7 @@ proc setbr {} {
     global br bra brv
     if {$::br == 0} {
         set brv 500
-        set bra 96
+        set bra 64
     } elseif {$::br == 1} {
         set brv 1000
         set bra 128
@@ -508,11 +491,12 @@ set alang "rus"
 set slang "rus"
 set br "0"
 set brv "500"
-set bra "96"
+set bra "64"
 set resolution "0"
 set resx "480"
 set resy "320"
 set ass "0"
+set shutdown "0"
 
 
 
@@ -574,6 +558,7 @@ grid [ttk::combobox .misc.subcp -width 11 -textvariable subcp] -row 1 -column 3 
 .misc.subcp configure -values [list CP1251 UTF-8 ISO-8859-1 ISO-8859-2 ISO-8859-3 ISO-8859-4 ISO-8859-5 ISO-8859-6 ISO-8859-7 ISO-8859-8 ISO-8859-9 ISO-8859-10 ISO-8859-13 ISO-8859-14 ISO-8859-15 CP1250 CP1252 CP1253 CP1254 CP1255 CP1256 CP1257 CP1258 KOI8-R CP895 CP852 UCS-2 UCS-4 UTF-7 CP866]
 grid [ttk::checkbutton .misc.normalize -text "Нормализовать" -variable normalize -state enabled] -row 0 -column 2 -pady 2 -sticky w
 grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state enabled] -row 2 -column 2 -pady 2 -sticky w
+grid [ttk::checkbutton .misc.shutdown -text "Выкл. PC" -variable shutdown -state enabled] -row 2 -column 3 -pady 2 -sticky w
 grid [ttk::button .misc.analyze -text "Анализ файла.." -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
 grid [ttk::checkbutton .misc.usesubs -text "Вкл.                Кодировка:" -variable subsenabled -state enabled] -row 1 -column 2 -sticky w
 grid columnconfigure . 0 -weight 1
@@ -588,9 +573,6 @@ grid rowconfigure .options.bitrate {1 5} -weight 1
 grid rowconfigure .options.res {1 5} -weight 1
 
 set pause 0
-set islinux [detectlinuxos]
-puts "Is linux OS? $islinux"
-
 set curdir [getrunningdir]
 checkfiles $curdir
 loaddirs
