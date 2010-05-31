@@ -434,11 +434,11 @@ proc getsound {sound} {
 }
 
 proc turbo1stpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o /dev/null" $fps]
+    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=1:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=0:analyse=0:partitions=none:ref=1:turbo=2:me=dia:bframes=0:threads=auto:nocabac:bframes=0:weightp=0:8x8dct=0 [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o /dev/null" $fps]
 }
 
 proc normalsecondpass {infile fps sound} {
-    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:bframes=0:threads=auto:no-cabac [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::outdir/video.avi\"" $fps]
+    return [fixfps "\"$infile\" -of avi -srate 44100 -ovc x264 [getsound $sound]-x264encopts level=30:pass=2:bitrate=[.options.bitrate.v get]:vbv-maxrate=1500:vbv-bufsize=2000:subme=6:analyse=0:partitions=none:ref=1:nocabac:bframes=0:threads=auto:bframes=0:weightp=0:8x8dct=0 [getsubtitleopts $infile] -vf [getscaleopts]scale=-10:-1,scale=0:-10,scale=0:-10,scale=${::resx}:-10::::::1,scale=-10:${::resy}::::::1,harddup -o \"$::outdir/video.avi\"" $fps]
 }
 
 proc getnormalize {} {
