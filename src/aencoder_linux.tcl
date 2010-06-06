@@ -245,7 +245,7 @@ proc enablegui {} {
     .misc.help configure -state enabled
     .misc.ass configure -state enabled
     .misc.subcp configure -state enabled
-    .misc.shutdown configure -state enabled
+    .misc.shutdown configure -state disabled
     setres
     setbr
     .progress.label configure -text "Готово!"
@@ -422,7 +422,7 @@ proc convert {} {
     }
     if {$::shutdown == "1"} {
     wlog "Shutdown PC..."
-    set data [myexec "gksudo -S --message \"Enter password to shutdown OS\" poweroff"]
+    set data [myexec "sudo poweroff"]
     }
 }
 
@@ -630,7 +630,7 @@ grid [ttk::combobox .misc.subcp -width 11 -textvariable subcp] -row 1 -column 3 
 .misc.subcp configure -values [list CP1251 UTF-8 ISO-8859-1 ISO-8859-2 ISO-8859-3 ISO-8859-4 ISO-8859-5 ISO-8859-6 ISO-8859-7 ISO-8859-8 ISO-8859-9 ISO-8859-10 ISO-8859-13 ISO-8859-14 ISO-8859-15 CP1250 CP1252 CP1253 CP1254 CP1255 CP1256 CP1257 CP1258 KOI8-R CP895 CP852 UCS-2 UCS-4 UTF-7 CP866]
 grid [ttk::checkbutton .misc.normalize -text "Нормализовать" -variable normalize -state enabled] -row 0 -column 2 -pady 2 -sticky w
 grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state enabled] -row 2 -column 2 -pady 2 -sticky w
-grid [ttk::checkbutton .misc.shutdown -text "Выкл. PC" -variable shutdown -state enabled] -row 2 -column 3 -pady 2 -sticky w
+grid [ttk::checkbutton .misc.shutdown -text "Выкл. PC" -variable shutdown -state disabled] -row 2 -column 3 -pady 2 -sticky w
 grid [ttk::button .misc.analyze -text "Анализ файла.." -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
 grid [ttk::checkbutton .misc.usesubs -text "Вкл.                Кодировка:" -variable subsenabled -state enabled] -row 1 -column 2 -sticky w
 grid columnconfigure . 0 -weight 1
