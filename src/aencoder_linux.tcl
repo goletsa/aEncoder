@@ -61,8 +61,13 @@ proc getlangopts {} {
 
 proc analyze {} {
     global vdata
-    set file [string map {/ \/} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]]
-    getvidinfo $file
+    set file [string map {/ \/} [tk_getOpenFile -initialdir $::initialdir -multiple 0 -filetypes [list [list "All Files" *] [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]] [list "DVD Video" *.ifo] ]]]
+    if {$file != ""} {
+     getvidinfo $file
+    } else {
+    return ""
+    }
+
     if {[catch {tk_messageBox -icon info -type ok -title "Результат анализа файла" -message "Разрешение: $vdata(width)x$vdata(height)\nПропорции: $vdata(aspect)\nЯзык аудио: $vdata(atracks)\nЯзык субтитров: $vdata(stracks)"}]} {
         tk_messageBox -icon error -type ok -title "Ошибка" -message "Неверный формат файла!"
     }
@@ -214,6 +219,7 @@ proc disablegui {} {
     .misc.help configure -state disabled
     .misc.ass configure -state disabled
     .misc.subcp configure -state disabled
+    .misc.shutdown configure -state disabled
 }
 
 proc enablegui {} {
@@ -239,6 +245,7 @@ proc enablegui {} {
     .misc.help configure -state enabled
     .misc.ass configure -state enabled
     .misc.subcp configure -state enabled
+    .misc.shutdown configure -state enabled
     setres
     setbr
     .progress.label configure -text "Готово!"
@@ -256,7 +263,7 @@ proc execmenc {label args} {
     wlog "\n--------------------------------------------------------------------------"
     wlog "Executing mencoder with args: ${mencoderpath} [join $args]"
     set pipe [open "| $::mencoderpath [filt [join $args]] 2>@1" r+]
-    fconfigure $pipe -buffering none -blocking 0
+    #fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
         set line [gets $pipe]
@@ -295,7 +302,7 @@ proc muxvidint {outfile filetoadd fps} {
     wlog "\n--------------------------------------------------------------------------"
     wlog "Starting to mux $filetoadd into $outfile with $fps fps"
     set pipe [open "| MP4Box -fps $fps -add [filt \"$filetoadd\"] [filt \"$outfile\"] 2>@1" r]
-    fconfigure $pipe -buffering none -blocking 0
+    #fconfigure $pipe -buffering none -blocking 0
     while {![eof $pipe]} {
         if {$pause} {tkwait variable pause}
         set line [gets $pipe]
@@ -411,6 +418,11 @@ proc convert {} {
             tk_messageBox -message "Muxing failed.[debugmsg]" -icon error -type ok
             wlog "Error muxing..."
         }
+        return ""
+    }
+    if {$::shutdown == "1"} {
+    wlog "Shutdown PC..."
+    set data [myexec "gksudo shutdown -p now"]
     }
 }
 
@@ -450,7 +462,7 @@ proc getnormalize {} {
 
 proc addfiles {} {
     global outdir initialdir
-    set files [tk_getOpenFile -initialdir $initialdir -multiple 1 -filetypes [list [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]]]]
+    set files [tk_getOpenFile -initialdir $initialdir -multiple 1 -filetypes [list [list "All Files" *] [list "Video Files" [list *.avi *.mp4 *.wmv *.mkv *.mpg *.m2v *.mov *.vob *.flv]] [list "DVD Video" *.ifo] ]]
     set initialdir [string map {/ \/} [file dirname [lindex $files 0]]]
     set filestoadd ""
     foreach file [lsort -unique $files] {
@@ -497,7 +509,7 @@ proc setbr {} {
     global br bra brv
     if {$::br == 0} {
         set brv 500
-        set bra 96
+        set bra 64
     } elseif {$::br == 1} {
         set brv 1000
         set bra 128
@@ -552,12 +564,12 @@ set alang "rus"
 set slang "rus"
 set br "0"
 set brv "500"
-set bra "96"
+set bra "64"
 set resolution "0"
 set resx "480"
 set resy "320"
 set ass "0"
-
+set shutdown "0"
 
 
 
@@ -618,6 +630,7 @@ grid [ttk::combobox .misc.subcp -width 11 -textvariable subcp] -row 1 -column 3 
 .misc.subcp configure -values [list CP1251 UTF-8 ISO-8859-1 ISO-8859-2 ISO-8859-3 ISO-8859-4 ISO-8859-5 ISO-8859-6 ISO-8859-7 ISO-8859-8 ISO-8859-9 ISO-8859-10 ISO-8859-13 ISO-8859-14 ISO-8859-15 CP1250 CP1252 CP1253 CP1254 CP1255 CP1256 CP1257 CP1258 KOI8-R CP895 CP852 UCS-2 UCS-4 UTF-7 CP866]
 grid [ttk::checkbutton .misc.normalize -text "Нормализовать" -variable normalize -state enabled] -row 0 -column 2 -pady 2 -sticky w
 grid [ttk::checkbutton .misc.ass -text "Вкл. оформление ASS" -variable ass -state enabled] -row 2 -column 2 -pady 2 -sticky w
+grid [ttk::checkbutton .misc.shutdown -text "Выкл. PC" -variable shutdown -state enabled] -row 2 -column 3 -pady 2 -sticky w
 grid [ttk::button .misc.analyze -text "Анализ файла.." -command analyze] -row 2 -rowspan 1 -column 0 -pady 2 -sticky nswe
 grid [ttk::checkbutton .misc.usesubs -text "Вкл.                Кодировка:" -variable subsenabled -state enabled] -row 1 -column 2 -sticky w
 grid columnconfigure . 0 -weight 1
