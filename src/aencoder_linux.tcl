@@ -1,4 +1,4 @@
-set version "0.99.4-linux"
+set version "0.99.5-linux"
 
 proc showhelp {} {
 tk_messageBox -message {
@@ -422,7 +422,7 @@ proc convert {} {
     }
     if {$::shutdown == "1"} {
     wlog "Shutdown PC..."
-    set data [myexec "gksudo shutdown -p now"]
+    set data [myexec "gksudo -S --message \"Enter password to shutdown OS\" poweroff"]
     }
 }
 
