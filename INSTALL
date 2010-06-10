@@ -1,7 +1,7 @@
 Installation notes for aEncoder for linux
 
 1) Your must have installed packages:
-	- mencoder
+	- mencoder with libfaac support
 	- tk8.5
 	- tcl8.5
 	- gpac >= 0.4.4
